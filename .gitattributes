@@ -1,0 +1,5 @@
+# CI 里跑的是 Linux bash：脚本一旦被 Windows 端存成 CRLF，
+# 就会报 "$'\r': command not found"。这里统一盯住 eol=lf。
+*.sh     text eol=lf
+*.yml    text eol=lf
+*.config text eol=lf
