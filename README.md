@@ -2,17 +2,16 @@
 
 基于 [P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt) 模板，参考 Actions-OpenWrt-AN758X 项目的「源码基座 + 机型 diffconfig + diy 脚本」结构：
 
-**一个 workflow，下拉选择机型，支持单个机型编译或三个机型全部编译；只用 padavanonly 源码和源码自带 feeds，不添加任何第三方插件源。**
+**一个 workflow，下拉选择机型，支持单个机型编译或两个机型全部编译；只用 padavanonly 源码和源码自带 feeds，不添加任何第三方插件源。**
 
 ## 支持的机型
 
-| 机型 | 设备 profile | USB | `CONFIG_PACKAGE_autosamba` |
-|------|--------------|-----|----------------------------|
-| 锐捷 X60 | `ruijie_rg-x60-new-expand` | 无 | 关闭 |
-| 锐捷 X60 Pro | `ruijie_rg-x60-pro-107m` | 无 | 关闭 |
-| 磊科 N60 Pro | `netcore_n60-pro` | 有 | 启用 |
+| 机型 | 设备 profile |
+|------|--------------|
+| 锐捷 X60 | `ruijie_rg-x60-new-expand` | 
+| 锐捷 X60 Pro | `ruijie_rg-x60-pro-107m` | 
 
-三个机型都是 `mediatek/filogic`（MT7986）。
+两个机型都是 `mediatek/filogic`（MT7986）。
 
 ## 源码
 
@@ -32,8 +31,7 @@
 configs/
 ├── base/mt7986-ax6000.config             # 源码基座的仓库副本（源码里没有时兜底）
 ├── x60.config                            # 锐捷 X60 的机型 diffconfig
-├── x60-pro.config                        # 锐捷 X60 Pro 的机型 diffconfig
-└── n60-pro.config                        # 磊科 N60 Pro 的机型 diffconfig
+└── x60-pro.config                        # 锐捷 X60 Pro 的机型 diffconfig
 scripts/
 └── prepare-config.sh                     # 源码基座 + 机型 diffconfig -> .config
 diy-part1.sh                              # feeds 之前：手工钩子（默认空文件）
@@ -74,20 +72,19 @@ workflow 的对应步骤：
 
 你列出的勾选项在配置文件里的状态：
 
-| 手动勾选 | x60 | x60-pro | n60-pro |
-|----------|-----|---------|---------|
-| `autocore-arm` | ✅ | ✅ | ✅ |
-| `automount` | ✅ | ✅ | ✅ |
-| `autosamba` | — | — | ✅ |
-| `luci-app-autoreboot` | ✅ | ✅ | ✅ |
-| `luci-app-ddns` | ✅ | ✅ | ✅ |
-| `luci-app-homeproxy` | ✅ | ✅ | ✅ |
-| `luci-app-ttyd` | ✅ | ✅ | ✅ |
-| `luci-app-upnp` | ✅ | ✅ | ✅ |
-| `luci-app-wechatpush` | ✅ | ✅ | ✅ |
-| `luci-app-wol` | ✅ | ✅ | ✅ |
-| `luci-theme-argon` | ✅ | ✅ | ✅ |
-| `ddns-scripts-cloudflare` | ✅ | ✅ | ✅ |
+| 手动勾选 | x60 | x60-pro |
+|----------|-----|---------|
+| `autocore-arm` | ✅ | ✅ |
+| `automount` | ✅ | ✅ |
+| `luci-app-autoreboot` | ✅ | ✅ |
+| `luci-app-ddns` | ✅ | ✅ |
+| `luci-app-homeproxy` | ✅ | ✅ |
+| `luci-app-ttyd` | ✅ | ✅ |
+| `luci-app-upnp` | ✅ | ✅ |
+| `luci-app-wechatpush` | ✅ | ✅ |
+| `luci-app-wol` | ✅ | ✅ |
+| `luci-theme-argon` | ✅ | ✅ |
+| `ddns-scripts-cloudflare` | ✅ | ✅ |
 
 另外：`passwall` 不在你的手动勾选列表里，源码 feeds 里也没有，所以没有保留。
 
@@ -118,12 +115,9 @@ workflow 会在日志里用 `::warning` 列出被剔除的包，不会静默编�
 两个文件保持为空（只有 shebang），不改变源码默认值；workflow 仍然会调用它们，
 方便以后需要时直接往里写内容。
 
-`autosamba` 直接写在 `configs/<机型>.config` 里：
-
-- `n60-pro`（有 USB）→ `CONFIG_PACKAGE_autosamba=y`
-- `x60` / `x60-pro`（无 USB）→ `# CONFIG_PACKAGE_autosamba is not set`
-
-workflow 在 `make defconfig` 后会校验一次，防止配置被 Kconfig 静默改掉。
+`autosamba` 直接写在 `configs/<机型>.config` 里，两台机型都不带 USB，所以都是
+`# CONFIG_PACKAGE_autosamba is not set`。workflow 在 `make defconfig` 后会校验一次，
+防止配置被 Kconfig 静默改掉。
 
 ## 使用方法
 
@@ -132,7 +126,7 @@ workflow 在 `make defconfig` 后会校验一次，防止配置被 Kconfig 静�
 
    | 输入项 | 说明 |
    |--------|------|
-   | `device` | `all` / `x60` / `x60-pro` / `n60-pro` |
+   | `device` | `all` / `x60` / `x60-pro` |
    | `branch` | 默认 `openwrt-24.10-6.6` |
    | `upload_release` | `true` 发布到 Release；`false` 只留 Artifact |
    | `ssh` | 调试用，仅仓库所有者，会阻塞构建 |
@@ -144,10 +138,10 @@ workflow 在 `make defconfig` 后会校验一次，防止配置被 Kconfig 静�
 
 ### `device=all` 时会发生什么
 
-`all` 展开成 **3 个并行 job**，每个机型一个 job：各自克隆源码、各自用 `configs/<机型>.config`、
-各自产出 Artifact 和 Release。因此 N60 Pro 的 `autosamba` 不会被带进两个锐捷固件。
+`all` 展开成 **2 个并行 job**，每个机型一个 job：各自克隆源码、各自用 `configs/<机型>.config`、
+各自产出 Artifact 和 Release，互不干扰。
 
-代价是消耗 3 份 Actions 分钟数；只编一台时直接选具体机型即可。
+代价是消耗 2 份 Actions 分钟数；只编一台时直接选具体机型即可。
 
 ## 本地编译
 
@@ -162,8 +156,8 @@ make -j$(nproc)
 
 ## 缓存
 
-- 只缓存 `dl/`（源码包），key 为 `mt798x-dl-<分支>-<年周>`，`all` 的三个 job 共享。
-- 不缓存 `staging_dir` / `ccache`：三个机型配置不同，共享工具链缓存收益有限，缓存错代反而难查。
+- 只缓存 `dl/`（源码包），key 为 `mt798x-dl-<分支>-<年周>`，`all` 的两个 job 共享。
+- 不缓存 `staging_dir` / `ccache`：两个机型配置不同，共享工具链缓存收益有限，缓存错代反而难查。
 - 仓库 Actions 缓存配额 10GB，超出后 GitHub 按最近最少使用自动淘汰。
 
 ## 已知限制
@@ -171,7 +165,7 @@ make -j$(nproc)
 - 单个 job 超时 350 分钟；MT7986 冷编译接近这个上限。
 - 只用源码自带 feeds，不提供第三方 feed 开关；确实需要额外包时，请自行修改 workflow 或源码。
 - `make defconfig` 会把 feeds 里不存在的包静默剔除。workflow 会列出被剔除的包，
-  并强校验机型与 `autosamba`。
+  并强校验机型选择与 `autosamba` 保持关闭。
 - `repository_dispatch` 触发时会用默认值（`all` + `upload_release=true`）。
 
 ## Credits

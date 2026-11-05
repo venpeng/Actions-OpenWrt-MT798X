@@ -5,7 +5,7 @@
 # 用法：
 #   ./scripts/prepare-config.sh <机型> [源码目录]
 #
-# 机型：x60 / x60-pro / n60-pro
+# 机型：x60 / x60-pro
 # 源码目录：默认当前目录（应指向 openwrt 源码根）
 #
 # 做的事：
@@ -17,7 +17,6 @@
 # 只用 padavanonly 一个源码：机型配置只有一份，
 # 源码自带的 defconfig/mt7986-ax6000.config 负责目标平台默认值。
 #
-# autosamba 已写在 configs/<机型>.config 里，defconfig 之后由 workflow 校验；
 # diy-part1.sh / diy-part2.sh 默认留空，是 feeds 前 / 配置载入后的手工钩子。
 # 本脚本只负责把 .config 拼好，之后统一 make defconfig。
 # ================================================================
@@ -27,16 +26,15 @@ DEVICE="${1:-}"
 OPENWRT="${2:-.}"
 
 if [ -z "$DEVICE" ]; then
-    echo "用法: $0 <x60|x60-pro|n60-pro> [源码目录]" >&2
+    echo "用法: $0 <x60|x60-pro> [源码目录]" >&2
     exit 1
 fi
 
 case "$DEVICE" in
     x60)     PROFILE="ruijie_rg-x60-new-expand" ;;
     x60-pro) PROFILE="ruijie_rg-x60-pro-107m" ;;
-    n60-pro) PROFILE="netcore_n60-pro" ;;
     *)
-        echo "::error::未知机型: ${DEVICE}（可选 x60 / x60-pro / n60-pro）" >&2
+        echo "::error::未知机型: ${DEVICE}（可选 x60 / x60-pro）" >&2
         exit 1
         ;;
 esac
