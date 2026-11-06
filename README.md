@@ -36,6 +36,7 @@ scripts/
 └── prepare-config.sh                     # 源码基座 + 机型 diffconfig -> .config
 diy-part1.sh                              # feeds 之前：手工钩子（默认空文件）
 diy-part2.sh                              # 配置载入后：手工钩子（默认空文件）
+diy-part3.sh                              # make defconfig 前：统一追加手动勾选的插件
 files/                                    # 可选：整目录覆盖到 openwrt/files
 ```
 
@@ -47,8 +48,9 @@ files/                                    # 可选：整目录覆盖到 openwrt/
 2. `scripts/prepare-config.sh` 用源码自带的 `defconfig/mt7986-ax6000.config` 打底；
 3. 追加 `configs/<机型>.config`；
 4. 强制只保留当前机型（关闭 `MULTI_PROFILE` / `PER_DEVICE_ROOTFS`，清掉其它设备）；
-5. 执行 `diy-part2.sh`（默认空文件）；
-6. `make defconfig` 展开成最终 `.config`。
+5. 执行 `diy-part2.sh`；
+6. 执行 `diy-part3.sh`，把手动插件列表写入 `.config`；
+7. `make defconfig` 展开并校验最终 `.config`。
 
 所以：**配置都在仓库里，不需要手动上传 `.config`。**
 
@@ -67,30 +69,29 @@ workflow 的对应步骤：
 1. 克隆同一个仓库、同一个分支；
 2. 执行同样的 `feeds update -a` / `feeds install -a`；
 3. `prepare-config.sh` 做第 3 步（铺源码基座），并追加 `configs/<机型>.config`；
-4. 你手动勾选的包已经写进 `configs/<机型>.config`，等价于 `make menuconfig`；
-5. `make defconfig` 展开后编译。
+4. `diy-part3.sh` 将手动勾选的插件写入 `.config`，等价于 `make menuconfig`；
+5. `make defconfig` 展开并校验后编译。
 
 你列出的勾选项在配置文件里的状态：
 
 | 手动勾选 | x60 | x60-pro |
 |----------|-----|---------|
-| `autocore-arm` | ✅ | ✅ |
-| `automount` | ✅ | ✅ |
-| `luci-app-autoreboot` | ✅ | ✅ |
-| `luci-app-ddns` | ✅ | ✅ |
-| `luci-app-homeproxy` | ✅ | ✅ |
-| `luci-app-ttyd` | ✅ | ✅ |
-| `luci-app-upnp` | ✅ | ✅ |
-| `luci-app-wechatpush` | ✅ | ✅ |
-| `luci-app-wol` | ✅ | ✅ |
-| `luci-theme-argon` | ✅ | ✅ |
-| `ddns-scripts-cloudflare` | ✅ | ✅ |
+| `autocore-arm`、`automount` | 基座默认 | 基座默认 |
+| `luci-app-eqos-mtk`、`luci-app-mtwifi-cfg`、`luci-app-turboacc-mtk`、`luci-app-wrtbwmon` | 基座默认 | 基座默认 |
+| `luci-app-autoreboot`、`luci-app-ddns`、`luci-app-homeproxy` | ✅ | ✅ |
+| `luci-app-ttyd`、`luci-app-upnp` | ✅ | ✅ |
+| `luci-app-wechatpush`、`luci-app-wol` | ✅ | ✅ |
+| `luci-theme-argon`、`ddns-scripts-cloudflare` | ✅ | ✅ |
 
 另外：`passwall` 不在你的手动勾选列表里，源码 feeds 里也没有，所以没有保留。
 
 ## 换插件 / 改包
 
-只允许使用源码 feeds 里已有的包。要增删 `configs/<机型>.config` 里的选项时：
+机型/硬件和源码构建选项继续放在 `configs/<机型>.config`；手动选用的插件统一在
+`diy-part3.sh` 的 `PLUGINS` 数组增删。插件必须来自当前源码或已安装 feeds，脚本会在
+`make defconfig` 后检查它们是否仍然启用。
+
+如果需要调整其他源码配置选项，可以在源码目录里运行：
 
 ```bash
 # 在源码目录里
@@ -99,8 +100,8 @@ make defconfig
 ./scripts/diffconfig.sh > /path/to/Actions-OpenWrt-MT798X/configs/<机型>.config
 ```
 
-然后按需要保留文件顶部的机型/profile 注释和 `CONFIG_TARGET_*` 行。
-`prepare-config.sh` 会强制写回目标机型，所以即使 diffconfig 里没有这些行也能构建。
+然后将机型差异保存回 `configs/<机型>.config`。插件包请放在 `diy-part3.sh`，不要再重复
+加入机型配置。
 
 如果配置里选了源码 feeds 中不存在的包，`make defconfig` 会把它静默剔除；
 workflow 会在日志里用 `::warning` 列出被剔除的包，不会静默编出一个缺菜单的固件。
@@ -110,14 +111,10 @@ workflow 会在日志里用 `::warning` 列出被剔除的包，不会静默编�
 | 脚本 | 执行时机 | 作用 |
 |------|----------|------|
 | `diy-part1.sh` | `feeds update` 之前 | 默认空文件；需要改源码/加 feed 时再写 |
-| `diy-part2.sh` | `.config` 载入后、`defconfig` 前 | 默认空文件；需要改默认值时再写 |
+| `diy-part2.sh` | `.config` 载入后 | 默认空文件；需要改默认值时再写 |
+| `diy-part3.sh` | `.config` 载入后、`defconfig` 前 | 维护要编入固件的源码内插件 |
 
-两个文件保持为空（只有 shebang），不改变源码默认值；workflow 仍然会调用它们，
-方便以后需要时直接往里写内容。
-
-`autosamba` 直接写在 `configs/<机型>.config` 里，两台机型都不带 USB，所以都是
-`# CONFIG_PACKAGE_autosamba is not set`。workflow 在 `make defconfig` 后会校验一次，
-防止配置被 Kconfig 静默改掉。
+前两个文件默认不改变源码默认值；workflow 仍会调用它们，方便以后自定义。
 
 ## 使用方法
 
@@ -149,6 +146,7 @@ workflow 会在日志里用 `::warning` 列出被剔除的包，不会静默编�
 cd /path/to/immortalwrt-mt798x-6.6
 bash /path/to/Actions-OpenWrt-MT798X/scripts/prepare-config.sh x60 .
 bash /path/to/Actions-OpenWrt-MT798X/diy-part2.sh
+bash /path/to/Actions-OpenWrt-MT798X/diy-part3.sh
 make defconfig
 make download -j$(nproc)
 make -j$(nproc)

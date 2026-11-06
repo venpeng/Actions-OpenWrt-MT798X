@@ -336,6 +336,18 @@ jobs:
           fi
 
       # ---------------------------------------------------
+      # diy-part3：统一追加手动勾选的源码内插件
+      #   插件清单集中维护在仓库根目录的 diy-part3.sh。
+      # ---------------------------------------------------
+      - name: Run diy-part3.sh
+        run: |
+          cd "$BUILD_ROOT/openwrt"
+          P3="$GITHUB_WORKSPACE/diy-part3.sh"
+          [ -f "$P3" ] || { echo "::error::未找到 $P3"; exit 1; }
+          dos2unix "$P3" 2>/dev/null || true
+          bash "$P3"
+
+      # ---------------------------------------------------
       # 可选 files 覆盖层
       # ---------------------------------------------------
       - name: Apply custom files
@@ -402,6 +414,18 @@ jobs:
             head -50 /tmp/missing.pkgs
           else
             echo "✅ 机型配置里的软件包全部保留"
+          fi
+
+          # --- diy-part3 插件校验 ---
+          if [ -f .diy-part3-packages ]; then
+            while IFS= read -r pkg; do
+              [ -n "$pkg" ] || continue
+              if ! grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
+                echo "::error::插件 ${pkg} 在 make defconfig 后未启用，请检查包是否存在或依赖是否满足"
+                exit 1
+              fi
+            done < .diy-part3-packages
+            echo "✅ diy-part3 插件均通过 defconfig 校验"
           fi
 
           echo "TARGET_BOARD=$(grep '^CONFIG_TARGET_BOARD=' .config | cut -d'"' -f2)"
