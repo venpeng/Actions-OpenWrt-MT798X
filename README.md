@@ -15,8 +15,6 @@
 
 ## 源码
 
-只用这一个：
-
 | 仓库 | 分支 |
 |------|------|
 | https://github.com/padavanonly/immortalwrt-mt798x-6.6.git | `openwrt-24.10-6.6` |
