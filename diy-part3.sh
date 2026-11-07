@@ -17,11 +17,8 @@ if [ ! -f .config ]; then
   exit 1
 fi
 
-# 与 MT798X-Imm24.10自编译插件配置.txt 的 menuconfig 选项对应。
-# autocore-arm 是源码里的真实包名（不是 autocore）。
+# 自定义插件
 PLUGINS=(
-  autocore-arm
-  automount
   luci-app-autoreboot
   luci-app-ddns
   luci-app-homeproxy
@@ -33,17 +30,8 @@ PLUGINS=(
   ddns-scripts-cloudflare
 )
 
-INDEX_FILE="tmp/.packageinfo"
-if [ -f "$INDEX_FILE" ]; then
-  for pkg in "${PLUGINS[@]}"; do
-    if ! grep -Fqx "Package: $pkg" "$INDEX_FILE"; then
-      echo "::error::插件 $pkg 不存在于 $INDEX_FILE；检查源码/feeds 包名"
-      exit 1
-    fi
-  done
-else
-  echo "::warning::未找到 $INDEX_FILE，跳过插件索引检查"
-fi
+# 直接写入配置，最终由 workflow 在 defconfig
+# 之后检查 CONFIG_PACKAGE_* 是否仍然保留；不存在的包会在那里给出明确错误。
 
 set_package() {
   local pkg="$1" sym="CONFIG_PACKAGE_$1"
